@@ -3,7 +3,7 @@
 Bot de surf pe Marea Neagra:
 
 - **Next.js pe Vercel** — homepage și webhook Telegram: userul dă `/start` → chat ID salvat în Redis
-- **GitHub Actions** — `bot.py` rulează orar și trimite raportul (momentan la un singur `CHAT_ID`)
+- **GitHub Actions** — `bot.py` rulează orar și trimite raportul la toți abonații din Redis
 
 ## Abonare (Vercel)
 
@@ -48,7 +48,8 @@ Răspuns: `{ "ok": true, "count": N, "chatIds": ["123", ...] }`
 
 1. În repo: **Settings → Secrets and variables → Actions**:
    - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_CHAT_ID` (un singur chat, până legăm broadcast-ul de lista din Redis)
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
 2. Workflows:
    - **Hourly surf report** — `0 * * * *` UTC
    - **Manual surf report** — Actions → Manual surf report → **Run workflow**
@@ -59,7 +60,8 @@ Răspuns: `{ "ok": true, "count": N, "chatIds": ["123", ...] }`
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 export TELEGRAM_BOT_TOKEN='...'
-export TELEGRAM_CHAT_ID='...'
+export UPSTASH_REDIS_REST_URL='...'
+export UPSTASH_REDIS_REST_TOKEN='...'
 python bot.py
 ```
 

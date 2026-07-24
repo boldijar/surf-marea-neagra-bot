@@ -13,10 +13,23 @@ from urllib.parse import urlencode
 import requests
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-if not TOKEN or not CHAT_ID:
+UPSTASH_URL = (
+    os.environ.get("UPSTASH_REDIS_REST_URL")
+    or os.environ.get("KV_REST_API_URL")
+    or ""
+).strip()
+UPSTASH_TOKEN = (
+    os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    or os.environ.get("KV_REST_API_TOKEN")
+    or ""
+).strip()
+SUBSCRIBERS_KEY = "subscribers"
+
+if not TOKEN:
+    raise SystemExit("Set TELEGRAM_BOT_TOKEN in the environment.")
+if not UPSTASH_URL or not UPSTASH_TOKEN:
     raise SystemExit(
-        "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in the environment."
+        "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in the environment."
     )
 
 LAT = 44.1809304
@@ -439,12 +452,27 @@ def build_message(days: list[dict]) -> str:
     return f"{greet} {intro}\n{mid}\n{link}"
 
 
-def send_telegram(text: str) -> dict:
+def list_subscribers() -> list[str]:
+    res = requests.post(
+        UPSTASH_URL,
+        headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
+        json=["SMEMBERS", SUBSCRIBERS_KEY],
+        timeout=30,
+    )
+    res.raise_for_status()
+    data = res.json()
+    if "error" in data and data["error"]:
+        raise RuntimeError(data["error"])
+    members = data.get("result") or []
+    return [str(m) for m in members]
+
+
+def send_telegram(chat_id: str, text: str) -> dict:
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     res = requests.post(
         url,
         json={
-            "chat_id": CHAT_ID,
+            "chat_id": chat_id,
             "text": text,
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
@@ -458,22 +486,49 @@ def send_telegram(text: str) -> dict:
     return data
 
 
+def broadcast(text: str, chat_ids: list[str]) -> dict:
+    sent: list[dict] = []
+    failed: list[dict] = []
+    for chat_id in chat_ids:
+        try:
+            result = send_telegram(chat_id, text)
+            sent.append(
+                {
+                    "chatId": chat_id,
+                    "messageId": result.get("result", {}).get("message_id"),
+                }
+            )
+        except Exception as exc:
+            failed.append({"chatId": chat_id, "error": str(exc)})
+    return {"sent": sent, "failed": failed}
+
+
 def main() -> None:
     days = build_daily_forecast()
     text = build_message(days)
     print(text)
     print("---")
-    result = send_telegram(text)
+
+    chat_ids = list_subscribers()
+    if not chat_ids:
+        raise SystemExit("No subscribers in Redis (key: subscribers).")
+
+    result = broadcast(text, chat_ids)
     print(
         {
             "ok": True,
+            "subscriberCount": len(chat_ids),
+            "sentCount": len(result["sent"]),
+            "failedCount": len(result["failed"]),
+            "failed": result["failed"],
             "days": [
                 {"date": d["time"], "score": d["score"], "swell": d["swellHeightMax"]}
                 for d in days
             ],
-            "telegramMessageId": result.get("result", {}).get("message_id"),
         }
     )
+    if result["failed"] and not result["sent"]:
+        raise SystemExit("All Telegram sends failed.")
 
 
 if __name__ == "__main__":
