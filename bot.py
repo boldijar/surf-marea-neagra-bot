@@ -23,7 +23,7 @@ LAT = 44.1809304
 LON = 28.6563829
 TIMEZONE = "Europe/Bucharest"
 FORECAST_DAYS = 8
-# Internal threshold for "interesting" days — not phrased that way in the text
+# Internal threshold for "interesting" days — not phrased that way in the text. Later to configure
 SCORE_MIN = 6
 
 BLACK_SEA_SCORING = {
