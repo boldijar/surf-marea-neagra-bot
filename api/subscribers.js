@@ -1,12 +1,10 @@
-import { listSubscribers } from "../lib/subscribers.js";
+const { listSubscribers } = require("../lib/subscribers.js");
 
 /**
  * GET /api/subscribers — list chat IDs (for broadcast / debugging).
  * Auth: Authorization: Bearer <SUBSCRIBERS_API_SECRET>
- * @param {import('@vercel/node').VercelRequest} req
- * @param {import('@vercel/node').VercelResponse} res
  */
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
@@ -30,4 +28,4 @@ export default async function handler(req, res) {
     console.error("subscribers error", err);
     return res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
-}
+};

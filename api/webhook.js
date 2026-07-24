@@ -1,8 +1,8 @@
-import {
+const {
   addSubscriber,
   removeSubscriber,
-} from "../lib/subscribers.js";
-import { sendMessage } from "../lib/telegram.js";
+} = require("../lib/subscribers.js");
+const { sendMessage } = require("../lib/telegram.js");
 
 const MSG_START_NEW =
   "Te-ai abonat la raportul Marea Neagra.\nCand apar zile interesante, iti scriu aici.\n\n/stop ca sa te dezabonezi.";
@@ -21,10 +21,8 @@ function unauthorized(res) {
 
 /**
  * Telegram webhook: /start → add chat_id, /stop → remove.
- * @param {import('@vercel/node').VercelRequest} req
- * @param {import('@vercel/node').VercelResponse} res
  */
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
@@ -41,7 +39,6 @@ export default async function handler(req, res) {
   const update = req.body;
   const message = update?.message || update?.edited_message;
   if (!message?.chat?.id || typeof message.text !== "string") {
-    // Ignore non-text / non-message updates so Telegram doesn't retry forever
     return res.status(200).json({ ok: true, ignored: true });
   }
 
@@ -70,7 +67,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, ignored: true });
   } catch (err) {
     console.error("webhook error", err);
-    // Still 200 so Telegram does not flood retries on our bugs
     return res.status(200).json({ ok: false, error: String(err?.message || err) });
   }
-}
+};

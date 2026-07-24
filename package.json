@@ -1,7 +1,6 @@
 {
   "name": "marea-neagra-bot",
   "private": true,
-  "type": "module",
   "engines": {
     "node": "20.x"
   },
