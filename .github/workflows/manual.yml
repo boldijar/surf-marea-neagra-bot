@@ -1,9 +1,7 @@
-name: Hourly surf report
+name: Manual surf report
 
 on:
-  schedule:
-    # Every hour (UTC). GitHub may delay a few minutes.
-    - cron: "0 * * * *"
+  workflow_dispatch:
 
 jobs:
   report:

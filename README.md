@@ -8,7 +8,9 @@ Rulează `bot.py` orar via GitHub Actions și trimite un mesaj scurt pe Telegram
 2. În repo: **Settings → Secrets and variables → Actions** adaugă:
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
-3. Workflow: `.github/workflows/hourly.yml` (`0 * * * *` UTC + buton manual **Run workflow**).
+3. Workflows:
+   - **Hourly surf report** — `0 * * * *` UTC
+   - **Manual surf report** — Actions → Manual surf report → **Run workflow**
 
 ## Local
 
