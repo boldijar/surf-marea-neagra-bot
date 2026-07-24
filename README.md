@@ -2,7 +2,7 @@
 
 Bot de surf pe Marea Neagra:
 
-- **Vercel** — webhook Telegram: userul dă `/start` → chat ID salvat în Redis
+- **Next.js pe Vercel** — homepage și webhook Telegram: userul dă `/start` → chat ID salvat în Redis
 - **GitHub Actions** — `bot.py` rulează orar și trimite raportul (momentan la un singur `CHAT_ID`)
 
 ## Abonare (Vercel)
@@ -63,10 +63,10 @@ export TELEGRAM_CHAT_ID='...'
 python bot.py
 ```
 
-## Local (webhook Node)
+## Local (Next.js)
 
 ```bash
 npm install
 # pune variabilele din .env.example în env
-npx vercel dev
+npm run dev
 ```
