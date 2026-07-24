@@ -33,6 +33,7 @@ curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
 |---------|--------|
 | `/start` | te adaugă în lista de chat ID-uri |
 | `/stop` | te scoate din listă |
+| `/status` | condiții live pe Marea Neagră (val, swell, vânt) |
 | `/help` | comenzi |
 
 ### Lista abonaților

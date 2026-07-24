@@ -2,17 +2,18 @@ import {
   addSubscriber,
   removeSubscriber,
 } from "../../../lib/subscribers.js";
+import { buildLiveStatusMessage } from "../../../lib/status.js";
 import { sendMessage } from "../../../lib/telegram.js";
 
 const messages = {
   startNew:
-    "Te-ai abonat la raportul Marea Neagra.\nCand apar zile interesante, iti scriu aici.\n\n/stop ca sa te dezabonezi.",
+    "Te-ai abonat la raportul Marea Neagra.\nCand apar zile interesante, iti scriu aici.\n\n/stop ca sa te dezabonezi.\n/status — cum e marea acum.",
   startExists:
-    "Esti deja pe lista. Cand apar zile interesante, iti scriu aici.\n\n/stop ca sa te dezabonezi.",
+    "Esti deja pe lista. Cand apar zile interesante, iti scriu aici.\n\n/stop ca sa te dezabonezi.\n/status — cum e marea acum.",
   stopRemoved:
-    "Te-ai dezabonat. Nu mai primesti mesaje de la bot.\n\n/start daca vrei din nou pe lista.",
+    "Te-ai dezabonat. Nu mai primesti mesaje de la bot.\n\n/start daca vrei din nou pe lista.\n/status — cum e marea acum.",
   stopMissing: "Nu erai pe lista. /start ca sa te abonezi.",
-  help: "Comenzi:\n/start — abonare la raport\n/stop — dezabonare",
+  help: "Comenzi:\n/start — abonare la raport\n/stop — dezabonare\n/status — cum e marea acum",
 };
 
 export async function POST(request) {
@@ -72,6 +73,12 @@ export async function POST(request) {
     if (command === "/help") {
       await sendMessage(chatId, messages.help);
       return Response.json({ ok: true, action: "help" });
+    }
+
+    if (command === "/status") {
+      const status = await buildLiveStatusMessage();
+      await sendMessage(chatId, status);
+      return Response.json({ ok: true, action: "status" });
     }
 
     return Response.json({ ok: true, ignored: true });
