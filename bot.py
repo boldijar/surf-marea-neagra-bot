@@ -354,14 +354,6 @@ INTROS_YES = [
     "Pare ca se misca apa {emoji} pe la CT.",
 ]
 
-INTROS_NO = [
-    "Saptamana asta e mai linistita {emoji}.",
-    "Nimic spectaculos pe radar {emoji}.",
-    "Marea tine pauza {emoji} momentan.",
-    "Prognoza e... discreta {emoji}.",
-    "Zilele urmatoare arata bland {emoji}.",
-]
-
 
 def pick(options: list) -> Any:
     return random.choice(options)
@@ -412,26 +404,22 @@ def highlight_line(day: dict, index: int) -> str:
     )
 
 
-def build_message(days: list[dict]) -> str:
-    good = [
+def interesting_days(days: list[dict]) -> list[tuple[int, dict]]:
+    return [
         (i, d)
         for i, d in enumerate(days)
-        if d["score"] is not None and d["score"] > SCORE_MIN
+        if d["score"] is not None and d["score"] >= SCORE_MIN
     ]
+
+
+def build_message(days: list[dict]) -> str | None:
+    good = interesting_days(days)
+    if not good:
+        return None
+
     greet = pick(GREETINGS)
     emoji = pick(WAVE_EMOJIS)
     link = SITE_URL
-
-    if not good:
-        intro = pick(INTROS_NO).format(emoji=emoji)
-        mid = pick(
-            [
-                "Niciun highlight clar — merita totusi o privire pe site.",
-                "Mai mult chill decat sesiune. Verifica site-ul daca te plictisesti.",
-                "Nimic de calendarizat serios, din pacate.",
-            ]
-        )
-        return f"{greet} {intro}\n{mid}\n{link}"
 
     # Best day as main highlight; mention extras lightly if more
     best_i, best = max(good, key=lambda x: x[1]["score"])
@@ -506,6 +494,16 @@ def broadcast(text: str, chat_ids: list[str]) -> dict:
 def main() -> None:
     days = build_daily_forecast()
     text = build_message(days)
+    summary_days = [
+        {"date": d["time"], "score": d["score"], "swell": d["swellHeightMax"]}
+        for d in days
+    ]
+
+    if text is None:
+        print("No days with score >= 6; skipping Telegram send.")
+        print({"ok": True, "skipped": True, "reason": "no_interesting_days", "days": summary_days})
+        return
+
     print(text)
     print("---")
 
@@ -521,10 +519,7 @@ def main() -> None:
             "sentCount": len(result["sent"]),
             "failedCount": len(result["failed"]),
             "failed": result["failed"],
-            "days": [
-                {"date": d["time"], "score": d["score"], "swell": d["swellHeightMax"]}
-                for d in days
-            ],
+            "days": summary_days,
         }
     )
     if result["failed"] and not result["sent"]:

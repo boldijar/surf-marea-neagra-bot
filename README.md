@@ -3,7 +3,7 @@
 Bot de surf pe Marea Neagra:
 
 - **Next.js pe Vercel** — homepage și webhook Telegram: userul dă `/start` → chat ID salvat în Redis
-- **GitHub Actions** — `bot.py` rulează orar și trimite raportul la toți abonații din Redis
+- **GitHub Actions** — `bot.py` rulează zilnic la ~9:00 și trimite raportul doar dacă există zile cu scor ≥ 6
 
 ## Abonare (Vercel)
 
@@ -52,7 +52,7 @@ Răspuns: `{ "ok": true, "count": N, "chatIds": ["123", ...] }`
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
 2. Workflows:
-   - **Hourly surf report** — `0 * * * *` UTC
+   - **Daily surf report** — `0 6 * * *` UTC (~09:00 București vara); trimite doar dacă există zile cu scor ≥ 6
    - **Manual surf report** — Actions → Manual surf report → **Run workflow**
 
 ## Local (Python report)

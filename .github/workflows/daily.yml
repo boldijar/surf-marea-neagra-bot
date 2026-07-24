@@ -1,9 +1,9 @@
-name: Hourly surf report
+name: Daily surf report
 
 on:
   schedule:
-    # Every hour (UTC). GitHub may delay a few minutes.
-    - cron: "0 * * * *"
+    # 09:00 Europe/Bucharest in summer (EEST = UTC+3). In winter (EET) this is 08:00.
+    - cron: "0 6 * * *"
 
 jobs:
   report:
