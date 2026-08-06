@@ -16,6 +16,16 @@ const messages = {
   help: "Comenzi:\n/start — abonare la raport\n/stop — dezabonare\n/status — cum e marea acum",
 };
 
+const surfQuotes = [
+  "Oceanul nu are memorie, dar valurile lui ne scriu poveștile în spumă.",
+  "Să surfezi e ca și cum ai încerca să îmbrățișezi vântul în timp ce dansezi pe apă.",
+  "Fiecare val e o promisiune a mării că libertatea încă există.",
+  "În inima oceanului, găsești acea liniște care nu are nevoie de cuvinte.",
+  "Valul este un munte care se mișcă, iar tu ești pasărea care îl cucerește.",
+  "Marea nu te judecă, ea doar te primește în dansul ei nesfârșit.",
+  "Uneori, cel mai bun mod de a merge înainte este să te lași purtat de curent.",
+];
+
 export async function POST(request) {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
   const suppliedSecret = request.headers.get(
@@ -46,42 +56,50 @@ export async function POST(request) {
     .toLowerCase();
 
   try {
-    if (command === "/start") {
-      const isNew = await addSubscriber(chatId);
-      await sendMessage(
-        chatId,
-        isNew ? messages.startNew : messages.startExists,
-      );
-      return Response.json({
-        ok: true,
-        action: isNew ? "subscribed" : "already",
-      });
-    }
+    switch (command) {
+      case "/start": {
+        const isNew = await addSubscriber(chatId);
+        await sendMessage(
+          chatId,
+          isNew ? messages.startNew : messages.startExists,
+        );
+        return Response.json({
+          ok: true,
+          action: isNew ? "subscribed" : "already",
+        });
+      }
 
-    if (command === "/stop") {
-      const removed = await removeSubscriber(chatId);
-      await sendMessage(
-        chatId,
-        removed ? messages.stopRemoved : messages.stopMissing,
-      );
-      return Response.json({
-        ok: true,
-        action: removed ? "unsubscribed" : "missing",
-      });
-    }
+      case "/stop": {
+        const removed = await removeSubscriber(chatId);
+        await sendMessage(
+          chatId,
+          removed ? messages.stopRemoved : messages.stopMissing,
+        );
+        return Response.json({
+          ok: true,
+          action: removed ? "unsubscribed" : "missing",
+        });
+      }
 
-    if (command === "/help") {
-      await sendMessage(chatId, messages.help);
-      return Response.json({ ok: true, action: "help" });
-    }
+      case "/help": {
+        await sendMessage(chatId, messages.help);
+        return Response.json({ ok: true, action: "help" });
+      }
 
-    if (command === "/status") {
-      const status = await buildLiveStatusMessage();
-      await sendMessage(chatId, status);
-      return Response.json({ ok: true, action: "status" });
-    }
+      case "/status": {
+        const status = await buildLiveStatusMessage();
+        await sendMessage(chatId, status);
+        return Response.json({ ok: true, action: "status" });
+      }
 
-    return Response.json({ ok: true, ignored: true });
+      default: {
+        const randomQuote =
+          surfQuotes[Math.floor(Math.random() * surfQuotes.length)];
+        const reply = `${randomQuote}\n\n${messages.help}`;
+        await sendMessage(chatId, reply);
+        return Response.json({ ok: true, action: "unknown_command" });
+      }
+    }
   } catch (error) {
     console.error("webhook error", error);
     // Acknowledge the update so Telegram does not retry indefinitely.

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import random
@@ -24,6 +25,7 @@ UPSTASH_TOKEN = (
     or ""
 ).strip()
 SUBSCRIBERS_KEY = "subscribers"
+STATS_KEY = "stats:days"
 
 if not TOKEN:
     raise SystemExit("Set TELEGRAM_BOT_TOKEN in the environment.")
@@ -250,7 +252,7 @@ def fetch_json(url: str) -> dict:
     return data
 
 
-def build_daily_forecast() -> list[dict]:
+def build_daily_forecast() -> tuple[list[dict], dict[str, list[dict]]]:
     marine_params = urlencode(
         {
             "latitude": LAT,
@@ -269,6 +271,19 @@ def build_daily_forecast() -> list[dict]:
                     "wind_wave_height_max",
                 ]
             ),
+            "hourly": ",".join(
+                [
+                    "wave_height",
+                    "wave_direction",
+                    "wave_period",
+                    "swell_wave_height",
+                    "swell_wave_direction",
+                    "swell_wave_period",
+                    "wind_wave_height",
+                    "wind_wave_direction",
+                    "wind_wave_period",
+                ]
+            ),
         }
     )
     weather_params = urlencode(
@@ -278,6 +293,16 @@ def build_daily_forecast() -> list[dict]:
             "timezone": TIMEZONE,
             "forecast_days": FORECAST_DAYS,
             "daily": "wind_speed_10m_max,wind_direction_10m_dominant",
+            "hourly": ",".join(
+                [
+                    "temperature_2m",
+                    "precipitation",
+                    "wind_speed_10m",
+                    "wind_direction_10m",
+                    "wind_gusts_10m",
+                    "cloud_cover",
+                ]
+            ),
         }
     )
 
@@ -326,7 +351,27 @@ def build_daily_forecast() -> list[dict]:
                 "score": score,
             }
         )
-    return days
+
+    hourly_by_day = {}
+    if "hourly" in marine and "hourly" in weather:
+        for i, t in enumerate(marine["hourly"]["time"]):
+            day_iso = t[:10]
+            if day_iso not in hourly_by_day:
+                hourly_by_day[day_iso] = []
+
+            hour_data = {"time": t}
+            # Add marine hourly data
+            for k, vals in marine["hourly"].items():
+                if k != "time":
+                    hour_data[k] = vals[i]
+            # Add weather hourly data
+            for k, vals in weather["hourly"].items():
+                if k != "time":
+                    hour_data[k] = vals[i]
+
+            hourly_by_day[day_iso].append(hour_data)
+
+    return days, hourly_by_day
 
 
 SITE_URL = "https://boldijar.github.io/marea-neagra/"
@@ -491,8 +536,32 @@ def broadcast(text: str, chat_ids: list[str]) -> dict:
     return {"sent": sent, "failed": failed}
 
 
+def save_stats(day_iso: str, hourly_data: list[dict]) -> None:
+    """Save hourly statistics to Redis (stats:days hash)."""
+    res = requests.post(
+        UPSTASH_URL,
+        headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
+        json=["HSET", STATS_KEY, day_iso, json.dumps(hourly_data)],
+        timeout=30,
+    )
+    res.raise_for_status()
+
+
 def main() -> None:
-    days = build_daily_forecast()
+    days, hourly_by_day = build_daily_forecast()
+
+    # Statistics: save any day with score >= 5
+    for d in days:
+        score = d["score"]
+        if score is not None and score >= 5.0:
+            day_iso = d["time"]
+            if day_iso in hourly_by_day:
+                try:
+                    save_stats(day_iso, hourly_by_day[day_iso])
+                    print(f"Saved stats for {day_iso} (score {score})")
+                except Exception as e:
+                    print(f"Failed to save stats for {day_iso}: {e}")
+
     text = build_message(days)
     summary_days = [
         {"date": d["time"], "score": d["score"], "swell": d["swellHeightMax"]}
