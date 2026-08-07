@@ -1,0 +1,18 @@
+curl -X POST "https://merry-starling-125738.upstash.io" \
+  -H "Authorization: Bearer gQAAAAAAAesqAAIgcDJjNjY3Mjg1NDRkOTY0YWUzYWUwNDI3Y2U2Y2VhNGMwMQ" \
+  -H "Content-Type: application/json" \
+  -d '["SADD","subscribers","test-chat-1"]'
+
+
+  curl -X POST "https://merry-starling-125738.upstash.io" \
+  -H "Authorization: Bearer gQAAAAAAAesqAAIgcDJjNjY3Mjg1NDRkOTY0YWUzYWUwNDI3Y2U2Y2VhNGMwMQ" \
+  -H "Content-Type: application/json" \
+  -d '["SMEMBERS","subscribers"]'
+
+
+
+SUBSCRIBERS_API_SECRET
+  38a47f9f0752981aa7dc77b18a1aa4ee1f85e0e7ce05ef6d5a350a52325d68c0
+
+  TELEGRAM_WEBHOOK_SECRET
+  49fe509fd99c3ea2195f489f9018ef962f525b2753b20cdd77be1230113cce93

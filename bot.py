@@ -10,6 +10,7 @@ import random
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -25,7 +26,6 @@ UPSTASH_TOKEN = (
     or ""
 ).strip()
 SUBSCRIBERS_KEY = "subscribers"
-STATS_KEY = "stats:days"
 
 if not TOKEN:
     raise SystemExit("Set TELEGRAM_BOT_TOKEN in the environment.")
@@ -40,6 +40,7 @@ TIMEZONE = "Europe/Bucharest"
 FORECAST_DAYS = 8
 # Internal threshold for "interesting" days — not phrased that way in the text. Later to configure
 SCORE_MIN = 6
+STATS_SCORE_MIN = 5
 
 BLACK_SEA_SCORING = {
     "offshoreWind": 270,
@@ -536,31 +537,63 @@ def broadcast(text: str, chat_ids: list[str]) -> dict:
     return {"sent": sent, "failed": failed}
 
 
-def save_stats(day_iso: str, hourly_data: list[dict]) -> None:
-    """Save hourly statistics to Redis (stats:days hash)."""
+def today_iso() -> str:
+    return datetime.now(ZoneInfo(TIMEZONE)).date().isoformat()
+
+
+def save_day_stats(day_iso: str, payload: dict) -> None:
+    """Save full day snapshot under the date key (e.g. 2026-08-07)."""
     res = requests.post(
         UPSTASH_URL,
         headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
-        json=["HSET", STATS_KEY, day_iso, json.dumps(hourly_data)],
+        json=["SET", day_iso, json.dumps(payload)],
         timeout=30,
     )
     res.raise_for_status()
+    data = res.json()
+    if data.get("error"):
+        raise RuntimeError(data["error"])
+
+
+def maybe_save_today_stats(
+    days: list[dict], hourly_by_day: dict[str, list[dict]]
+) -> None:
+    today = today_iso()
+    today_day = next((d for d in days if d["time"] == today), None)
+    if not today_day:
+        print(f"No forecast for today ({today}); skipping stats save.")
+        return
+
+    score = today_day["score"]
+    if score is None or score < STATS_SCORE_MIN:
+        print(
+            f"Today ({today}) score {score} < {STATS_SCORE_MIN}; skipping stats save."
+        )
+        return
+
+    hourly = hourly_by_day.get(today)
+    if not hourly:
+        print(f"No hourly data for today ({today}); skipping stats save.")
+        return
+
+    payload = {
+        "date": today,
+        "score": score,
+        "daily": today_day,
+        "hourly": hourly,
+        "savedAt": datetime.now(ZoneInfo(TIMEZONE)).isoformat(),
+    }
+    save_day_stats(today, payload)
+    print(f"Saved stats for today ({today}) with score {score}.")
 
 
 def main() -> None:
     days, hourly_by_day = build_daily_forecast()
 
-    # Statistics: save any day with score >= 5
-    for d in days:
-        score = d["score"]
-        if score is not None and score >= 5.0:
-            day_iso = d["time"]
-            if day_iso in hourly_by_day:
-                try:
-                    save_stats(day_iso, hourly_by_day[day_iso])
-                    print(f"Saved stats for {day_iso} (score {score})")
-                except Exception as e:
-                    print(f"Failed to save stats for {day_iso}: {e}")
+    try:
+        maybe_save_today_stats(days, hourly_by_day)
+    except Exception as exc:
+        print(f"Failed to save today's stats: {exc}")
 
     text = build_message(days)
     summary_days = [
